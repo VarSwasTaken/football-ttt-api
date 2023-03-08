@@ -1,5 +1,6 @@
 import {Request, Response} from 'express';
 import db from '../config/database';
+import {ObjectId} from 'mongodb';
 
 const clubsCollection = db.collection('clubs');
 
@@ -7,20 +8,20 @@ export const getClubData = async (req: Request, res: Response) => {
     let clubID = parseInt(req.params.clubID);
     if (isNaN(clubID)) return res.status(400).json({success: false, error: `Wrong params provided`});
 
-    let clubData = await clubsCollection.findOne({_id: clubID});
-    if (clubData == null) return res.status(400).json({success: false, error: `No club found with the ID of: ${clubID}`});
+    let clubData = await clubsCollection.findOne({_id: clubID as unknown as ObjectId});
+    if (!clubData) return res.status(400).json({success: false, error: `No club found with the ID of: ${clubID}`});
     return res.status(200).json({success: true, data: clubData});
 };
 
 const compareClubs = async (team1_ID: number, team2_ID: number) => {
-    let firstTeamData = await clubsCollection.findOne({_id: team1_ID});
-    let secondTeamData = await clubsCollection.findOne({_id: team2_ID});
+    let firstTeamData = await clubsCollection.findOne({_id: team1_ID as unknown as ObjectId});
+    let secondTeamData = await clubsCollection.findOne({_id: team2_ID as unknown as ObjectId});
 
     let firstTeamPlayers: number[] = [];
     let secondTeamPlayers: number[] = [];
 
-    if (firstTeamData != null) firstTeamPlayers = firstTeamData['players'];
-    if (secondTeamData != null) secondTeamPlayers = secondTeamData['players'];
+    if (firstTeamData) firstTeamPlayers = firstTeamData['players'];
+    if (secondTeamData) secondTeamPlayers = secondTeamData['players'];
 
     let mutualPlayers = firstTeamPlayers.filter((element) => secondTeamPlayers.includes(element)).length;
     if (mutualPlayers < 2) return false;
@@ -35,8 +36,8 @@ export const drawCustom = async (req: Request, res: Response) => {
     for (let i = 0; i < clubs.length; i++) {
         if (isNaN(clubs[i])) return res.status(400).json({success: false, error: `Wrong queries provided`});
 
-        let clubData = await clubsCollection.findOne({_id: clubs[i]});
-        if (clubData == null) return res.status(400).json({success: false, error: `No club found with the ID of: ${clubs[i]}`});
+        let clubData = await clubsCollection.findOne({_id: clubs[i] as unknown as ObjectId});
+        if (!clubData) return res.status(400).json({success: false, error: `No club found with the ID of: ${clubs[i]}`});
     }
 
     let drawnClubs: number[] = [];
@@ -102,7 +103,6 @@ const drawSet = async (clubs: number[]) => {
 };
 
 export const drawTopFive = async (req: Request, res: Response) => {
-    console.log(req.originalUrl);
     let queryClubs = await clubsCollection.find({league: {$in: ['Premier League', 'LaLiga', 'Bundesliga', 'Serie A', 'Ligue 1']}}).toArray();
     let clubs: number[] = [];
     for (let i = 0; i < queryClubs.length; i++) {
