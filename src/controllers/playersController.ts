@@ -1,34 +1,36 @@
 import {Request, Response} from 'express';
 import db from '../config/database';
 import {ObjectId} from 'mongodb';
+import {BadRequestError} from '../middleware/errors';
 
 const playersCollection = db.collection('players');
 const clubsCollection = db.collection('clubs');
 
 export const getPlayerData = async (req: Request, res: Response) => {
     let playerID = parseInt(req.params.playerID);
-    if (isNaN(playerID)) return res.status(400).json({success: false, error: `Wrong params provided`});
+    if (isNaN(playerID)) throw new BadRequestError("Wrong parameters provided. 'playerID' parameter must be of type number");
 
     let playerData = await playersCollection.findOne({_id: playerID as unknown as ObjectId});
-    if (!playerData) return res.status(400).json({success: false, error: `No player found with the ID of: ${playerID}`});
+    if (!playerData) throw new BadRequestError(`No player found with the ID of: ${playerID}`);
     return res.status(200).json({success: true, data: playerData});
 };
 
 export const checkForMatch = async (req: Request, res: Response) => {
     let playerID = parseInt(req.params.playerID);
-    if (isNaN(playerID)) return res.status(400).json({success: false, error: `Wrong params provided`});
+    if (isNaN(playerID)) throw new BadRequestError("Wrong parameters provided. 'clubID' parameter must be of type number");
 
     let playerData = await playersCollection.findOne({_id: playerID as unknown as ObjectId});
-    if (!playerData) return res.status(400).json({success: false, error: `No player found with the ID of: ${playerID}`});
+    if (!playerData) throw new BadRequestError(`No player found with the ID of: ${playerID}`);
 
     let club1ID = parseInt(req.query.club1 as string);
     let club2ID = parseInt(req.query.club2 as string);
-    if (!club1ID || !club2ID || isNaN(club1ID) || isNaN(club2ID)) return res.status(400).json({success: false, error: `Wrong queries provided`});
+    if (!club1ID || !club2ID) throw new BadRequestError('Too short query given. Exactly 2 clubIDs should be provided as parameters.');
+    if (isNaN(club1ID) || isNaN(club2ID)) throw new BadRequestError("Wrong query given. All 'club' query parameters must be of type number");
 
     let club1data = await clubsCollection.findOne({_id: club1ID as unknown as ObjectId});
     let club2data = await clubsCollection.findOne({_id: club2ID as unknown as ObjectId});
-    if (!club1data) return res.status(400).json({success: false, error: `No club found with the ID of: ${club1ID}`});
-    if (!club2data) return res.status(400).json({success: false, error: `No club found with the ID of: ${club2ID}`});
+    if (!club1data) throw new BadRequestError(`No club found with the ID of: ${club1ID}`);
+    if (!club2data) throw new BadRequestError(`No club found with the ID of: ${club2ID}`);
 
     let clubs: number[] = [];
     clubs = playerData['clubs'];
@@ -43,12 +45,10 @@ export const searchPlayers = async (req: Request, res: Response) => {
             {
                 $search: {
                     index: 'searchPlayers',
-                    text: {
-                        query: `\"${playerName}\"`,
+                    wildcard: {
+                        query: `*${playerName}*`,
                         path: 'name',
-                        fuzzy: {
-                            maxEdits: 1,
-                        },
+                        allowAnalyzedField: true,
                     },
                 },
             },

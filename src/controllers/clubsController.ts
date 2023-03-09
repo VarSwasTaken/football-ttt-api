@@ -1,15 +1,16 @@
 import {Request, Response} from 'express';
 import db from '../config/database';
 import {ObjectId} from 'mongodb';
+import {BadRequestError} from '../middleware/errors';
 
 const clubsCollection = db.collection('clubs');
 
 export const getClubData = async (req: Request, res: Response) => {
     let clubID = parseInt(req.params.clubID);
-    if (isNaN(clubID)) return res.status(400).json({success: false, error: `Wrong params provided`});
+    if (isNaN(clubID)) throw new BadRequestError("Wrong parameters provided. 'clubID' parameter must be of type number");
 
     let clubData = await clubsCollection.findOne({_id: clubID as unknown as ObjectId});
-    if (!clubData) return res.status(400).json({success: false, error: `No club found with the ID of: ${clubID}`});
+    if (!clubData) throw new BadRequestError(`No club found with the ID of: ${clubID}`);
     return res.status(200).json({success: true, data: clubData});
 };
 
@@ -30,14 +31,15 @@ const compareClubs = async (team1_ID: number, team2_ID: number) => {
 
 export const drawCustom = async (req: Request, res: Response) => {
     let query = req.query.clubs as string[];
-    if (query.length < 6) return res.status(400).json({success: false, error: `Too small amount of clubs given`});
+    if (!query) throw new BadRequestError('No query given. Provide query with atleast 6 clubIDs as parameters');
+    if (query.length < 6) throw new BadRequestError('Too short query given. Atleast 6 clubIDs should be provided as parameters.');
 
     let clubs = query.map(Number);
     for (let i = 0; i < clubs.length; i++) {
-        if (isNaN(clubs[i])) return res.status(400).json({success: false, error: `Wrong queries provided`});
+        if (isNaN(clubs[i])) throw new BadRequestError("Wrong query given. All 'clubs' query parameters must be of type number");
 
         let clubData = await clubsCollection.findOne({_id: clubs[i] as unknown as ObjectId});
-        if (!clubData) return res.status(400).json({success: false, error: `No club found with the ID of: ${clubs[i]}`});
+        if (!clubData) throw new BadRequestError(`No club found with the ID of: ${clubs[i]}`);
     }
 
     let drawnClubs: number[] = [];
@@ -53,7 +55,7 @@ export const drawCustom = async (req: Request, res: Response) => {
         for (let j = 3; j <= 5; j++) {
             let correct = await compareClubs(drawnClubs[i], drawnClubs[j]);
             if (!correct) {
-                if (clubs.length == 0) return res.status(400).json({success: false, error: `Could not draw 6 matching clubs using current filter`});
+                if (clubs.length == 0) return res.status(200).json({success: false, clubs: null});
                 while (true) {
                     let num = Math.floor(Math.random() * (clubs.length - 1));
                     if (drawnClubs.indexOf(clubs[num]) === -1) {

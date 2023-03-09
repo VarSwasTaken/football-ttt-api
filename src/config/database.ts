@@ -7,15 +7,10 @@ const url = process.env.DB_URL || '';
 const client = new mongoDB.MongoClient(url);
 
 const connect = async () => {
-    try {
-        await client.connect();
-        console.log('Connected to MongoDB');
-        const db = client.db('footballttt');
-        return db;
-    } catch (error) {
-        console.log(error);
-        throw error;
-    }
+    await client.connect();
+    console.log('Connected to MongoDB');
+    const db = client.db('footballttt');
+    return db;
 };
 
 export default await connect();
